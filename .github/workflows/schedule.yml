@@ -1,0 +1,59 @@
+name: IPO Reminder
+
+on:
+  schedule:
+    - cron: "15 0 * * *" # 06:00 Nepal Time (UTC+05:45)
+  workflow_dispatch:
+    inputs:
+      dev_mode:
+        description: "Run in dev mode (send only to test email)"
+        required: false
+        default: "false"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: |
+          uv venv .venv
+          source .venv/bin/activate
+          uv sync
+          uv run playwright install --with-deps chromium
+
+      - name: Run pipeline
+        env:
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_LIST_ID: ${{ secrets.BREVO_LIST_ID }}
+          BREVO_SMTP_HOST: ${{ secrets.BREVO_SMTP_HOST }}
+          BREVO_SMTP_PORT: ${{ secrets.BREVO_SMTP_PORT }}
+          BREVO_SMTP_USER: ${{ secrets.BREVO_SMTP_USER }}
+          BREVO_SMTP_PASS: ${{ secrets.BREVO_SMTP_PASS }}
+          BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
+          BREVO_SENDER_NAME: ${{ secrets.BREVO_SENDER_NAME }}
+          DEDUPE_SALT: ${{ secrets.DEDUPE_SALT }}
+        run: |
+          if [[ "${{ github.event.inputs.dev_mode }}" == "true" ]]; then
+            uv run python pipeline.py --verbose --dev
+          else
+            uv run python pipeline.py --verbose
+          fi
+
+      - name: Commit ledger updates
+        run: |
+          if [[ -n "$(git status --porcelain data/sent_ledger.json)" ]]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add data/sent_ledger.json
+            git commit -m "Update sent ledger"
+            git push
+          fi
