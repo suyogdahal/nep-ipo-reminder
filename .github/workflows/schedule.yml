@@ -55,6 +55,10 @@ jobs:
 
       - name: Commit ledger updates
         run: |
+          if [[ "${{ github.event.inputs.dev_mode }}" == "true" ]]; then
+            echo "Dev mode run: skipping ledger commit."
+            exit 0
+          fi
           if [[ -n "$(git status --porcelain data/sent_ledger.json)" ]]; then
             git config user.name "github-actions"
             git config user.email "github-actions@users.noreply.github.com"

@@ -244,8 +244,10 @@ def run_pipeline(verbose: bool, force_send: bool, dev_mode: bool) -> int:
         emails = [DEV_EMAIL]
         log(f"Dev mode enabled: sending only to {DEV_EMAIL}", verbose)
 
-    ledger = load_ledger()
-    prune_ledger(ledger, days=90)
+    ledger = {}
+    if not dev_mode:
+        ledger = load_ledger()
+        prune_ledger(ledger, days=90)
     sent_count = 0
 
     for row in open_rows:
@@ -317,10 +319,11 @@ def run_pipeline(verbose: bool, force_send: bool, dev_mode: bool) -> int:
                 html=html,
                 ics=ics,
             )
-            issue_bucket[dedupe_key] = datetime.now(timezone.utc).isoformat()
+            if not dev_mode:
+                issue_bucket[dedupe_key] = datetime.now(timezone.utc).isoformat()
             sent_count += 1
 
-    if sent_count:
+    if sent_count and not dev_mode:
         save_ledger(ledger)
 
     log(f"Sent {sent_count} emails.", verbose)
