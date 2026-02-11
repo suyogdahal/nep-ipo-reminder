@@ -2,7 +2,7 @@ name: IPO Reminder
 
 on:
   schedule:
-    - cron: "15 0 * * *" # 06:00 Nepal Time (UTC+05:45)
+    - cron: "30 4 * * *" # 10:15 Nepal Time (UTC+05:45)
   workflow_dispatch:
     inputs:
       dev_mode:
